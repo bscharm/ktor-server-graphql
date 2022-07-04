@@ -6,7 +6,7 @@ import com.expediagroup.graphql.server.execution.GraphQLRequestParser
 import com.expediagroup.graphql.server.execution.GraphQLServer
 import io.ktor.server.request.ApplicationRequest
 
-class KtorGraphQLServer(
+internal class KtorGraphQLServer(
     requestParser: GraphQLRequestParser<ApplicationRequest>,
     contextFactory: GraphQLContextFactory<*, ApplicationRequest>,
     requestHandler: GraphQLRequestHandler

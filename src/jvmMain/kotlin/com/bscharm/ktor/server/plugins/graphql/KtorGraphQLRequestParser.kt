@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.request.receiveText
 
-class KtorGraphQLRequestParser(private val mapper: ObjectMapper) : GraphQLRequestParser<ApplicationRequest> {
+internal class KtorGraphQLRequestParser(private val mapper: ObjectMapper) : GraphQLRequestParser<ApplicationRequest> {
     override suspend fun parseRequest(request: ApplicationRequest): GraphQLServerRequest? =
         request.call.receiveText().let(::parseRequest).getOrNull()
 
