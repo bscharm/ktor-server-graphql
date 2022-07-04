@@ -1,8 +1,5 @@
 package com.bscharm.ktor.server.plugins.graphql
 
-import com.bscharm.ktor.server.plugins.graphql.configuration.KtorGraphQLContextFactory
-import com.bscharm.ktor.server.plugins.graphql.configuration.KtorGraphQLRequestParser
-import com.bscharm.ktor.server.plugins.graphql.configuration.KtorGraphQLServer
 import com.expediagroup.graphql.generator.SchemaGeneratorConfig
 import com.expediagroup.graphql.generator.TopLevelObject
 import com.expediagroup.graphql.generator.hooks.NoopSchemaGeneratorHooks

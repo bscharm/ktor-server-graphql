@@ -1,4 +1,4 @@
-package com.bscharm.ktor.server.plugins.graphql.configuration
+package com.bscharm.ktor.server.plugins.graphql
 
 import com.expediagroup.graphql.server.execution.GraphQLContextFactory
 import com.expediagroup.graphql.server.execution.GraphQLRequestHandler
