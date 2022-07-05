@@ -5,7 +5,6 @@ plugins {
 }
 
 group = "com.arrivehealth"
-version = "1.0.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
