@@ -1,4 +1,4 @@
-package com.bscharm.ktor.server.plugins.graphql.testQueries
+package com.arrivehealth.ktor.server.plugins.graphql.testQueries
 
 import com.expediagroup.graphql.server.operations.Query
 

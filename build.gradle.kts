@@ -4,7 +4,7 @@ plugins {
     id("net.researchgate.release") version "3.0.0"
 }
 
-group = "com.bscharm"
+group = "com.arrivehealth"
 version = "1.0.0-SNAPSHOT"
 
 repositories {

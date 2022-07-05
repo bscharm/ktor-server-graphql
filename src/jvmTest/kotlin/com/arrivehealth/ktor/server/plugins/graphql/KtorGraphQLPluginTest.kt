@@ -1,9 +1,9 @@
-package com.bscharm.ktor.server.plugins.graphql
+package com.arrivehealth.ktor.server.plugins.graphql
 
-import com.bscharm.ktor.server.plugins.graphql.testQueries.ComplexQuery
-import com.bscharm.ktor.server.plugins.graphql.testQueries.ComplexQueryResult
-import com.bscharm.ktor.server.plugins.graphql.testQueries.SimpleQuery
-import com.bscharm.ktor.server.plugins.graphql.testQueries.SimpleQueryResult
+import com.arrivehealth.ktor.server.plugins.graphql.testQueries.ComplexQuery
+import com.arrivehealth.ktor.server.plugins.graphql.testQueries.ComplexQueryResult
+import com.arrivehealth.ktor.server.plugins.graphql.testQueries.SimpleQuery
+import com.arrivehealth.ktor.server.plugins.graphql.testQueries.SimpleQueryResult
 import com.expediagroup.graphql.generator.exceptions.TypeNotSupportedException
 import com.expediagroup.graphql.server.types.GraphQLRequest
 import com.expediagroup.graphql.server.types.GraphQLResponse
@@ -101,7 +101,7 @@ class KtorGraphQLPluginTest {
     fun `supports complex types if registered in packages`() = testApplication {
         install(GraphQL) {
             queries = listOf(ComplexQuery())
-            packages = listOf("com.bscharm.ktor.server.plugins.graphql.testSchema")
+            packages = listOf("com.arrivehealth.ktor.server.plugins.graphql.testSchema")
         }
 
         val client = createClient {

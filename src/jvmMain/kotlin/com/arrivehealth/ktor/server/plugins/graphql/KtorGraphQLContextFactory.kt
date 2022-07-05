@@ -1,4 +1,4 @@
-package com.bscharm.ktor.server.plugins.graphql
+package com.arrivehealth.ktor.server.plugins.graphql
 
 import com.expediagroup.graphql.generator.execution.GraphQLContext
 import com.expediagroup.graphql.server.execution.GraphQLContextFactory
