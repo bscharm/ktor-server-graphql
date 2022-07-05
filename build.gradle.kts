@@ -30,7 +30,7 @@ kotlin {
                 implementation("io.ktor:ktor-server:[2.0.0,)")
                 implementation("io.ktor:ktor-server-content-negotiation-jvm:[2.0.0,)")
                 implementation("io.ktor:ktor-serialization-jackson-jvm:[2.0.0,)")
-                implementation("org.slf4j:slf4j-api:1.7.36")
+                implementation("org.slf4j:slf4j-api:[1.7,)")
             }
         }
         val jvmTest by getting {

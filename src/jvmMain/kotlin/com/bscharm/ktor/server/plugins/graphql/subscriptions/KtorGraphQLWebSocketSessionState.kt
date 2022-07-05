@@ -1,14 +1,15 @@
 package com.bscharm.ktor.server.plugins.graphql.subscriptions
 
-import com.bscharm.ktor.server.plugins.graphql.subscriptions.GraphQLWebSocketMessage.SubscriptionMessage.SubscriptionMessagePayload
 import io.ktor.util.collections.ConcurrentSet
 import io.ktor.websocket.WebSocketSession
+import kotlinx.coroutines.cancel
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.CoroutineContext
 
-internal class KtorGraphQLWebSocketSessionState {
+class KtorGraphQLWebSocketSessionState {
     private val sessionInitializationState = ConcurrentSet<WebSocketSession>()
     private val sessionOperationState =
-        ConcurrentHashMap<WebSocketSession, ConcurrentHashMap<String, SubscriptionMessagePayload>>()
+        ConcurrentHashMap<WebSocketSession, ConcurrentHashMap<String, CoroutineContext>>()
 
     fun initialize(session: WebSocketSession) {
         sessionInitializationState.add(session)
@@ -19,10 +20,15 @@ internal class KtorGraphQLWebSocketSessionState {
     }
 
     fun operationSubscribed(id: String, session: WebSocketSession): Boolean {
-        return sessionOperationState[session]?.contains(key = id) ?: false
+        return sessionOperationState.getOrPut(session) { ConcurrentHashMap() }.contains(id)
     }
 
-    fun markOperationSubscribed(id: String, session: WebSocketSession, payload: SubscriptionMessagePayload) {
-        sessionOperationState[session]?.put(id, payload)
+    fun markOperationSubscribed(id: String, session: WebSocketSession, context: CoroutineContext) {
+        sessionOperationState.getOrPut(session) { ConcurrentHashMap() }[id] = context
+    }
+
+    fun cancelOperation(id: String, session: WebSocketSession) {
+        sessionOperationState[session]?.get(id)?.cancel()
+        sessionOperationState[session]?.remove(id)
     }
 }

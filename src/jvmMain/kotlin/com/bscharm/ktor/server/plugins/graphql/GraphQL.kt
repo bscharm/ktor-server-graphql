@@ -5,6 +5,7 @@ import com.bscharm.ktor.server.plugins.graphql.subscriptions.KtorGraphQLSubscrip
 import com.bscharm.ktor.server.plugins.graphql.subscriptions.KtorGraphQLWebSocketProtocolHandler
 import com.expediagroup.graphql.generator.SchemaGeneratorConfig
 import com.expediagroup.graphql.generator.TopLevelObject
+import com.expediagroup.graphql.generator.execution.FlowSubscriptionExecutionStrategy
 import com.expediagroup.graphql.generator.hooks.NoopSchemaGeneratorHooks
 import com.expediagroup.graphql.generator.hooks.SchemaGeneratorHooks
 import com.expediagroup.graphql.generator.scalars.IDValueUnboxer
@@ -35,18 +36,17 @@ import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
-import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
-import io.ktor.websocket.close
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.flow.cancellable
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-@OptIn(FlowPreview::class)
 @Suppress("Unused")
 val GraphQL = createApplicationPlugin(
     name = "GraphQL", createConfiguration = ::KtorGraphQLPluginConfiguration
@@ -68,7 +68,8 @@ val GraphQL = createApplicationPlugin(
         hooks = hooks,
     )
     val schema: GraphQLSchema = toSchema(config, queries, mutations, subscriptions)
-    val graphQL: GraphQL = graphql.GraphQL.newGraphQL(schema).valueUnboxer(IDValueUnboxer()).build()
+    val graphQL: GraphQL = graphql.GraphQL.newGraphQL(schema).valueUnboxer(IDValueUnboxer())
+        .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy()).build()
     val graphQLServer: GraphQLServer<ApplicationRequest> = KtorGraphQLServer(
         KtorGraphQLRequestParser(mapper), KtorGraphQLContextFactory(emptyMap()), GraphQLRequestHandler(graphQL)
     )
@@ -93,22 +94,18 @@ val GraphQL = createApplicationPlugin(
 
         webSocket("subscriptions", protocol = "graphql-transport-ws") {
             val session = this
-
-            launch(Dispatchers.IO) {
-                delay(10000)
-                if (!protocolHandler.initReceived(session)) {
-                    close(CloseReason(4408, "Connection initialization timeout."))
+            incoming.consumeEach { frame ->
+                launch(Dispatchers.IO) {
+                    logger.info(String(frame.data))
+                    val message = mapper.readValue<GraphQLWebSocketMessage>(frame.data)
+                    protocolHandler.handle(message, session, coroutineContext)
+                        .map { mapper.writeValueAsString(it) }
+                        .map { Frame.Text(it) }
+                        .onEach { send(it) }
+                        .cancellable()
+                        .collect()
                 }
             }
-
-            incoming
-                .receiveAsFlow()
-                .onEach { frame -> logger.trace(String(frame.data)) }
-                .map { mapper.readValue<GraphQLWebSocketMessage>(it.data) }
-                .flatMapConcat { webSocketMessage -> protocolHandler.handle(webSocketMessage, session) }
-                .map { mapper.writeValueAsString(it) }
-                .map { send(Frame.Text(it)) }
-                .collect()
         }
 
         if (playground) {

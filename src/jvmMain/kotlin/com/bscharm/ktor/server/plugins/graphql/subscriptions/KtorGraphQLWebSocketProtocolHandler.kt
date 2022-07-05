@@ -9,8 +9,8 @@ import io.ktor.websocket.CloseReason
 import io.ktor.websocket.WebSocketSession
 import io.ktor.websocket.close
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.reactive.asFlow
 import org.slf4j.LoggerFactory
+import kotlin.coroutines.CoroutineContext
 
 class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorGraphQLSubscriptionHandler) {
     private val logger = LoggerFactory.getLogger(KtorGraphQLWebSocketProtocolHandler::class.java)
@@ -23,12 +23,25 @@ class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorG
 
     suspend fun handle(
         message: GraphQLWebSocketMessage,
-        session: WebSocketServerSession
+        session: WebSocketServerSession,
+        coroutineContext: CoroutineContext
     ): Flow<GraphQLWebSocketMessage> = when (message) {
         is GraphQLWebSocketMessage.PingMessage -> onPing()
         is GraphQLWebSocketMessage.ConnectionInitMessage -> onConnectionInit(session)
-        is GraphQLWebSocketMessage.SubscriptionMessage -> onSubscribe(message, session)
-        else -> emptyFlow()
+        is GraphQLWebSocketMessage.SubscriptionMessage -> onSubscribe(message, session, coroutineContext)
+        is GraphQLWebSocketMessage.CompleteMessage -> onComplete(message, session)
+        else -> {
+            session.close(CloseReason(4400, "Unrecognized message"))
+            emptyFlow()
+        }
+    }
+
+    private suspend fun onComplete(
+        message: GraphQLWebSocketMessage.CompleteMessage,
+        session: WebSocketSession
+    ): Flow<GraphQLWebSocketMessage> {
+        state.cancelOperation(message.id, session)
+        return emptyFlow()
     }
 
     private suspend fun onConnectionInit(session: WebSocketServerSession): Flow<GraphQLWebSocketMessage.ConnectionAckMessage> {
@@ -45,7 +58,8 @@ class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorG
 
     private suspend fun onSubscribe(
         message: GraphQLWebSocketMessage.SubscriptionMessage,
-        session: WebSocketServerSession
+        session: WebSocketServerSession,
+        coroutineContext: CoroutineContext
     ): Flow<GraphQLWebSocketMessage> {
         if (!state.isInitialized(session)) {
             session.close(CloseReason(4401, "Unauthorized."))
@@ -56,10 +70,10 @@ class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorG
             session.close(CloseReason(4409, "Subscriber for ${message.id} already exists."))
         }
 
-        state.markOperationSubscribed(message.id, session, message.payload)
+        state.markOperationSubscribed(message.id, session, coroutineContext)
         val graphQLRequest = mapper.convertValue<GraphQLRequest>(message.payload)
+
         return subscriptionHandler.execute(graphQLRequest)
-            .asFlow()
             .map {
                 if (it.errors.isEmpty()) {
                     GraphQLWebSocketMessage.NextMessage(message.id, it)

@@ -70,10 +70,4 @@ internal class GraphQLWebSocketMessageDeserializationTest {
 
         assertThat(json).isEqualTo("{\"id\":\"id\",\"payload\":[{\"message\":\"something went wrong\",\"locations\":[],\"errorType\":\"DataFetchingException\",\"path\":null,\"extensions\":null}],\"type\":\"error\"}")
     }
-
-    @Test
-    fun `default mapper returns an invalid message if type not recognized`() {
-        val message = mapper.readValue("{\"type\": \"nope\"}", GraphQLWebSocketMessage::class.java)
-        assertThat(message).isInstanceOf(GraphQLWebSocketMessage.InvalidMessage::class.java)
-    }
 }

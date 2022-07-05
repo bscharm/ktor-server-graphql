@@ -16,8 +16,7 @@ import graphql.GraphQLError
     use = JsonTypeInfo.Id.NAME,
     include = JsonTypeInfo.As.EXISTING_PROPERTY,
     property = "type",
-    visible = true,
-    defaultImpl = GraphQLWebSocketMessage.InvalidMessage::class
+    visible = true
 )
 @JsonIgnoreProperties(ignoreUnknown = true)
 sealed class GraphQLWebSocketMessage(open val type: String) {
@@ -32,7 +31,7 @@ sealed class GraphQLWebSocketMessage(open val type: String) {
     @JsonTypeName("connection_ack")
     data class ConnectionAckMessage(val payload: Map<String, Any>?) :
         GraphQLWebSocketMessage("connection_ack"),
-        Incoming
+        Outgoing
 
     @JsonTypeName("ping")
     data class PingMessage(val payload: Map<String, Any>?) : GraphQLWebSocketMessage("ping"), Incoming, Outgoing
@@ -61,6 +60,4 @@ sealed class GraphQLWebSocketMessage(open val type: String) {
 
     @JsonTypeName("complete")
     data class CompleteMessage(val id: String) : GraphQLWebSocketMessage("complete"), Incoming, Outgoing
-
-    object InvalidMessage : GraphQLWebSocketMessage("invalid"), Incoming, Outgoing
 }
