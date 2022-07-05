@@ -42,3 +42,32 @@ kotlin {
         }
     }
 }
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/rxrevu/ktor-server-graphql")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
+
+release {
+    git {
+        requireBranch.set("main")
+    }
+    svn {
+        username.set(System.getenv("GITHUB_ACTOR"))
+        password.set(System.getenv("GITHUB_TOKEN"))
+    }
+}
+
+tasks {
+    afterReleaseBuild {
+        dependsOn(":publish")
+    }
+}
