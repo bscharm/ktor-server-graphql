@@ -27,10 +27,12 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.call
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.install
+import io.ktor.server.application.pluginOrNull
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.application
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
@@ -79,8 +81,11 @@ val GraphQL = createApplicationPlugin(
     this.application.install(WebSockets)
     this.application.routing {
         route(path, HttpMethod.Post) {
-            install(ContentNegotiation) {
-                jackson()
+            val contentNegotiationPlugin = this.application.pluginOrNull(ContentNegotiation)
+            if (contentNegotiationPlugin == null) {
+                install(ContentNegotiation) {
+                    jackson()
+                }
             }
 
             handle {

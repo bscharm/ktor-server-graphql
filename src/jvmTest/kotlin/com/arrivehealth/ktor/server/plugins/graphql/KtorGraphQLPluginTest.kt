@@ -9,7 +9,6 @@ import com.expediagroup.graphql.server.types.GraphQLRequest
 import com.expediagroup.graphql.server.types.GraphQLResponse
 import com.expediagroup.graphql.server.types.GraphQLServerRequest
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -19,10 +18,12 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.jackson.jackson
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.testing.testApplication
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertDoesNotThrow
 
 class KtorGraphQLPluginTest {
     @Test
@@ -32,7 +33,7 @@ class KtorGraphQLPluginTest {
         }
 
         val client = createClient {
-            install(ContentNegotiation) {
+            install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
                 jackson()
             }
         }
@@ -105,7 +106,7 @@ class KtorGraphQLPluginTest {
         }
 
         val client = createClient {
-            install(ContentNegotiation) {
+            install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
                 jackson()
             }
         }
@@ -122,6 +123,22 @@ class KtorGraphQLPluginTest {
 
         val body = response.body<GraphQLResponse<ComplexQueryResult>>()
         assertThat(body.data?.complexValue?.value).isEqualTo("success")
+    }
+
+    @Test
+    fun `supports an application with the content negotiation plugin already installed`() {
+        assertDoesNotThrow {
+            testApplication {
+                install(ContentNegotiation) {
+                    jackson()
+                }
+
+                install(GraphQL) {
+                    queries = listOf(ComplexQuery())
+                    packages = listOf("com.bscharm.ktor.server.plugins.graphql.testSchema")
+                }
+            }
+        }
     }
 
     @Test

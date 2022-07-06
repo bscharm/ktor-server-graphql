@@ -2,7 +2,7 @@ package com.bscharm.ktor.server.plugins.graphql.subscriptions
 
 import io.ktor.util.collections.ConcurrentSet
 import io.ktor.websocket.WebSocketSession
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Job
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.CoroutineContext
 
@@ -28,7 +28,8 @@ class KtorGraphQLWebSocketSessionState {
     }
 
     fun cancelOperation(id: String, session: WebSocketSession) {
-        sessionOperationState[session]?.get(id)?.cancel()
+        val coroutineContext = sessionOperationState[session]?.get(id)
+        coroutineContext?.get(Job)?.cancel()
         sessionOperationState[session]?.remove(id)
     }
 }

@@ -3,13 +3,7 @@ package com.bscharm.ktor.server.plugins.graphql.subscriptions
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.DeserializationContext
-import com.fasterxml.jackson.databind.JsonDeserializer
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
 import graphql.ExecutionResult
-import graphql.ExecutionResultImpl
 import graphql.GraphQLError
 
 @JsonTypeInfo(

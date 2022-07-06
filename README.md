@@ -29,6 +29,11 @@ embeddedServer(Netty, port = 8080) {
     }
 }.start(wait = true)
 ```
+### Dependencies
+As the underlying framework, [graphql-java](https://www.graphql-java.com/), relies on [jackson](https://github.com/FasterXML/jackson) for serialization, so too
+does this plugin. If you do not have the [ContentNegotiation](https://ktor.io/docs/serialization.html) plugin installed
+it will be installed for you but _scoped to the route for GraphQL_. If you install on your own, be sure to use jackson as
+the serializer.
 
 ## Configuration
 
