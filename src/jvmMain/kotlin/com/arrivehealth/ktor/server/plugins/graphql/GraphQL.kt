@@ -1,6 +1,5 @@
 package com.arrivehealth.ktor.server.plugins.graphql
 
-import com.bscharm.ktor.server.plugins.graphql.subscriptions.GraphQLWebSocketMessage
 import com.bscharm.ktor.server.plugins.graphql.subscriptions.KtorGraphQLSubscriptionHandler
 import com.bscharm.ktor.server.plugins.graphql.subscriptions.KtorGraphQLWebSocketProtocolHandler
 import com.expediagroup.graphql.generator.SchemaGeneratorConfig
@@ -16,7 +15,6 @@ import com.expediagroup.graphql.server.operations.Mutation
 import com.expediagroup.graphql.server.operations.Query
 import com.expediagroup.graphql.server.operations.Subscription
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import graphql.GraphQL
 import graphql.schema.GraphQLSchema
 import io.ktor.http.ContentType
@@ -58,6 +56,7 @@ val GraphQL = createApplicationPlugin(
     val queries = pluginConfig.queries.map { TopLevelObject(it) }
     val mutations = pluginConfig.mutations.map { TopLevelObject(it) }
     val subscriptions = pluginConfig.subscriptions.map { TopLevelObject(it) }
+    val subscriptionsPath = pluginConfig.subscriptionsPath
     val packages = pluginConfig.packages
     val path = pluginConfig.path
     val hooks = pluginConfig.hooks
@@ -97,13 +96,12 @@ val GraphQL = createApplicationPlugin(
             }
         }
 
-        webSocket("subscriptions", protocol = "graphql-transport-ws") {
+        webSocket(subscriptionsPath, protocol = "graphql-transport-ws") {
             val session = this
             incoming.consumeEach { frame ->
                 launch(Dispatchers.IO) {
-                    logger.info(String(frame.data))
-                    val message = mapper.readValue<GraphQLWebSocketMessage>(frame.data)
-                    protocolHandler.handle(message, session, coroutineContext)
+                    logger.trace(String(frame.data))
+                    protocolHandler.handle(frame, session, coroutineContext)
                         .map { mapper.writeValueAsString(it) }
                         .map { Frame.Text(it) }
                         .onEach { send(it) }
@@ -115,7 +113,7 @@ val GraphQL = createApplicationPlugin(
 
         if (playground) {
             get(playgroundPath) {
-                call.respondText(buildPlaygroundHtml(path, "subscriptions"), ContentType.Text.Html)
+                call.respondText(buildPlaygroundHtml(path, subscriptionsPath), ContentType.Text.Html)
             }
         }
     }
@@ -126,6 +124,7 @@ class KtorGraphQLPluginConfiguration {
     var queries: List<Query> = emptyList()
     var mutations: List<Mutation> = emptyList()
     var subscriptions: List<Subscription> = emptyList()
+    var subscriptionsPath: String = "subscriptions"
     var path: String = "graphql"
     var hooks: SchemaGeneratorHooks = NoopSchemaGeneratorHooks
     var playground: Boolean = false
