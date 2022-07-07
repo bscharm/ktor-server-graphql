@@ -1,7 +1,7 @@
 package com.arrivehealth.ktor.server.plugins.graphql
 
-import com.bscharm.ktor.server.plugins.graphql.subscriptions.KtorGraphQLSubscriptionHandler
-import com.bscharm.ktor.server.plugins.graphql.subscriptions.KtorGraphQLWebSocketProtocolHandler
+import com.arrivehealth.ktor.server.plugins.graphql.subscriptions.KtorGraphQLSubscriptionHandler
+import com.arrivehealth.ktor.server.plugins.graphql.subscriptions.KtorGraphQLWebSocketProtocolHandler
 import com.expediagroup.graphql.generator.SchemaGeneratorConfig
 import com.expediagroup.graphql.generator.TopLevelObject
 import com.expediagroup.graphql.generator.execution.FlowSubscriptionExecutionStrategy
@@ -43,9 +43,11 @@ import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
 @Suppress("Unused")
 val GraphQL = createApplicationPlugin(
@@ -98,13 +100,17 @@ val GraphQL = createApplicationPlugin(
 
         webSocket(subscriptionsPath, protocol = "graphql-transport-ws") {
             val session = this
+            val sessionId = UUID.randomUUID()
             incoming.consumeEach { frame ->
                 launch(Dispatchers.IO) {
                     logger.trace(String(frame.data))
-                    protocolHandler.handle(frame, session, coroutineContext)
+                    protocolHandler.handle(frame, session, sessionId, coroutineContext.job)
                         .map { mapper.writeValueAsString(it) }
                         .map { Frame.Text(it) }
-                        .onEach { send(it) }
+                        .onEach { frame ->
+                            logger.trace(String(frame.data))
+                            send(frame)
+                        }
                         .cancellable()
                         .collect()
                 }

@@ -1,4 +1,4 @@
-package com.bscharm.ktor.server.plugins.graphql.subscriptions
+package com.arrivehealth.ktor.server.plugins.graphql.subscriptions
 
 import com.expediagroup.graphql.server.extensions.toGraphQLError
 import com.expediagroup.graphql.server.types.GraphQLRequest
@@ -8,8 +8,8 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.server.websocket.WebSocketServerSession
 import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
-import io.ktor.websocket.WebSocketSession
 import io.ktor.websocket.close
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emptyFlow
@@ -17,30 +17,32 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import org.slf4j.LoggerFactory
-import kotlin.coroutines.CoroutineContext
+import java.util.UUID
 
 class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorGraphQLSubscriptionHandler) {
     private val logger = LoggerFactory.getLogger("KtorGraphQLPlugin")
     private val mapper = jacksonObjectMapper()
     private val state = KtorGraphQLWebSocketSessionState()
 
-    fun initReceived(session: WebSocketSession): Boolean {
-        return state.isInitialized(session)
+    fun initReceived(sessionId: UUID): Boolean {
+        return state.isInitialized(sessionId)
     }
 
     suspend fun handle(
         frame: Frame,
         session: WebSocketServerSession,
-        coroutineContext: CoroutineContext
+        sessionId: UUID,
+        job: Job
     ): Flow<GraphQLWebSocketMessage> {
         return when (val message = graphQLWebSocketMessage(frame)) {
             is GraphQLWebSocketMessage.PingMessage -> onPing()
             is GraphQLWebSocketMessage.PongMessage -> emptyFlow()
-            is GraphQLWebSocketMessage.ConnectionInitMessage -> onConnectionInit(session)
-            is GraphQLWebSocketMessage.SubscriptionMessage -> onSubscribe(message, session, coroutineContext)
-            is GraphQLWebSocketMessage.CompleteMessage -> onComplete(message, session)
+            is GraphQLWebSocketMessage.ConnectionInitMessage -> onConnectionInit(session, sessionId)
+            is GraphQLWebSocketMessage.SubscriptionMessage -> onSubscribe(message, session, sessionId, job)
+            is GraphQLWebSocketMessage.CompleteMessage -> onComplete(message, sessionId)
             else -> {
-                session.close(CloseReason(4400, "Unrecognized message"))
+                logger.debug("closing session[$sessionId]: received unrecognized message")
+                session.close(CloseReason(GraphQLWsCloseReason.UnrecognizedMessage.Code, "Unrecognized message"))
                 emptyFlow()
             }
         }
@@ -52,23 +54,31 @@ class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorG
 
     private fun onComplete(
         message: GraphQLWebSocketMessage.CompleteMessage,
-        session: WebSocketSession
+        sessionId: UUID
     ): Flow<GraphQLWebSocketMessage> {
         logger.debug("received complete")
-        state.cancelOperation(message.id, session)
+        state.cancelOperation(message.id, sessionId)
         logger.debug("operation ${message.id} cancelled")
         return emptyFlow()
     }
 
-    private suspend fun onConnectionInit(session: WebSocketServerSession): Flow<GraphQLWebSocketMessage.ConnectionAckMessage> {
+    private suspend fun onConnectionInit(
+        session: WebSocketServerSession,
+        sessionId: UUID
+    ): Flow<GraphQLWebSocketMessage.ConnectionAckMessage> {
         logger.debug("received init")
 
-        if (state.isInitialized(session)) {
-            logger.debug("closing session: received duplicate init")
-            session.close(CloseReason(4429, "Too many initialization requests."))
+        if (state.isInitialized(sessionId)) {
+            logger.debug("closing session[$sessionId]: received duplicate init")
+            session.close(
+                CloseReason(
+                    GraphQLWsCloseReason.DuplicateInitialization.Code,
+                    "Too many initialization requests."
+                )
+            )
             return emptyFlow()
         } else {
-            state.initialize(session)
+            state.initialize(sessionId)
             logger.debug("session initialized")
         }
 
@@ -79,23 +89,29 @@ class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorG
     private suspend fun onSubscribe(
         message: GraphQLWebSocketMessage.SubscriptionMessage,
         session: WebSocketServerSession,
-        coroutineContext: CoroutineContext
+        sessionId: UUID,
+        job: Job
     ): Flow<GraphQLWebSocketMessage> {
         logger.debug("received subscribe")
 
-        if (!state.isInitialized(session)) {
-            logger.debug("closing session: received subscribe before init")
-            session.close(CloseReason(4401, "Unauthorized."))
+        if (!state.isInitialized(sessionId)) {
+            logger.debug("closing session[$sessionId]: received subscribe before init")
+            session.close(CloseReason(GraphQLWsCloseReason.Unauthorized.Code, "Unauthorized."))
             return emptyFlow()
         }
 
-        if (state.operationSubscribed(message.id, session)) {
-            logger.debug("closing session: received duplicate subscribe for operation ${message.id}")
-            session.close(CloseReason(4409, "Subscriber for ${message.id} already exists."))
+        if (state.operationSubscribed(message.id, sessionId)) {
+            logger.debug("closing session[$sessionId]: received duplicate subscribe for operation[${message.id}]")
+            session.close(
+                CloseReason(
+                    GraphQLWsCloseReason.SubscriberExists.Code,
+                    "Subscriber for ${message.id} already exists."
+                )
+            )
         }
 
-        state.markOperationSubscribed(message.id, session, coroutineContext)
-        logger.debug("session subscribed to operation ${message.id}")
+        state.markOperationSubscribed(message.id, sessionId, job)
+        logger.debug("session[$sessionId] subscribed to operation[${message.id}]")
         val graphQLRequest = mapper.convertValue<GraphQLRequest>(message.payload)
 
         return subscriptionHandler.execute(graphQLRequest)

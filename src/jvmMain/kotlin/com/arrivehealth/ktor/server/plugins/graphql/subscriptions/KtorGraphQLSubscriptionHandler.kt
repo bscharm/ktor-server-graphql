@@ -1,4 +1,4 @@
-package com.bscharm.ktor.server.plugins.graphql.subscriptions
+package com.arrivehealth.ktor.server.plugins.graphql.subscriptions
 
 import com.expediagroup.graphql.server.extensions.toExecutionInput
 import com.expediagroup.graphql.server.types.GraphQLRequest

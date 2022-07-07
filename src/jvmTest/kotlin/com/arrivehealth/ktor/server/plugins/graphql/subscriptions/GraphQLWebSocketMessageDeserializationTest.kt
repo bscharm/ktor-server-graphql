@@ -1,4 +1,4 @@
-package com.bscharm.ktor.server.plugins.graphql.subscriptions
+package com.arrivehealth.ktor.server.plugins.graphql.subscriptions
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -28,7 +28,10 @@ internal class GraphQLWebSocketMessageDeserializationTest {
 
     @ParameterizedTest(name = "{0} is supported")
     @MethodSource
-    fun `default mapper can deserialize messages with an optional payload`(type: String, clazz: Class<GraphQLWebSocketMessage>) {
+    fun `default mapper can deserialize messages with an optional payload`(
+        type: String,
+        clazz: Class<GraphQLWebSocketMessage>
+    ) {
         val message: GraphQLWebSocketMessage = mapper.readValue("{\"type\":\"$type\", \"payload\": {\"foo\": \"bar\"}}")
         assertThat(message).isInstanceOf(clazz)
     }

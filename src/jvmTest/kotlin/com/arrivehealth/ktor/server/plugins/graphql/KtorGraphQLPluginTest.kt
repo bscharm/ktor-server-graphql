@@ -135,7 +135,7 @@ class KtorGraphQLPluginTest {
 
                 install(GraphQL) {
                     queries = listOf(ComplexQuery())
-                    packages = listOf("com.bscharm.ktor.server.plugins.graphql.testSchema")
+                    packages = listOf("com.arrivehealth.ktor.server.plugins.graphql.testSchema")
                 }
             }
         }
