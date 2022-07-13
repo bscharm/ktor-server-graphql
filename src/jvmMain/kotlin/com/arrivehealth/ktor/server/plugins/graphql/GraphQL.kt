@@ -14,6 +14,7 @@ import com.expediagroup.graphql.server.execution.GraphQLServer
 import com.expediagroup.graphql.server.operations.Mutation
 import com.expediagroup.graphql.server.operations.Query
 import com.expediagroup.graphql.server.operations.Subscription
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import graphql.GraphQL
 import graphql.schema.GraphQLSchema
@@ -26,10 +27,13 @@ import io.ktor.server.application.call
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.install
 import io.ktor.server.application.pluginOrNull
+import io.ktor.server.auth.Authentication
+import io.ktor.server.auth.authenticate
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.Route
 import io.ktor.server.routing.application
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
@@ -64,6 +68,8 @@ val GraphQL = createApplicationPlugin(
     val hooks = pluginConfig.hooks
     val playground = pluginConfig.playground
     val playgroundPath = pluginConfig.playgroundPath
+    val authenticationEnabled = pluginConfig.authenticationEnabled
+    val authenticationName = pluginConfig.authenticationName
 
     val mapper = jacksonObjectMapper()
     val config = SchemaGeneratorConfig(
@@ -81,45 +87,69 @@ val GraphQL = createApplicationPlugin(
 
     this.application.install(WebSockets)
     this.application.routing {
-        route(path, HttpMethod.Post) {
-            val contentNegotiationPlugin = this.application.pluginOrNull(ContentNegotiation)
-            if (contentNegotiationPlugin == null) {
-                install(ContentNegotiation) {
-                    jackson()
-                }
-            }
+        val authenticationPlugin = this.application.pluginOrNull(Authentication)
 
-            handle {
-                val result = graphQLServer.execute(call.request)
-
-                result?.also { call.respond(it) } ?: run {
-                    call.respond(HttpStatusCode.BadRequest)
-                }
+        if (authenticationPlugin != null && authenticationEnabled) {
+            authenticate(authenticationName) {
+                graphQLRoute(path, graphQLServer)
+                webSocketRoute(subscriptionsPath, logger, protocolHandler, mapper)
             }
-        }
-
-        webSocket(subscriptionsPath, protocol = "graphql-transport-ws") {
-            val session = this
-            val sessionId = UUID.randomUUID()
-            incoming.consumeEach { frame ->
-                launch(Dispatchers.IO) {
-                    logger.trace(String(frame.data))
-                    protocolHandler.handle(frame, session, sessionId, coroutineContext.job)
-                        .map { mapper.writeValueAsString(it) }
-                        .map { Frame.Text(it) }
-                        .onEach { frame ->
-                            logger.trace(String(frame.data))
-                            send(frame)
-                        }
-                        .cancellable()
-                        .collect()
-                }
-            }
+        } else {
+            graphQLRoute(path, graphQLServer)
+            webSocketRoute(subscriptionsPath, logger, protocolHandler, mapper)
         }
 
         if (playground) {
             get(playgroundPath) {
                 call.respondText(buildPlaygroundHtml(path, subscriptionsPath), ContentType.Text.Html)
+            }
+        }
+    }
+}
+
+private fun Route.webSocketRoute(
+    subscriptionsPath: String,
+    logger: Logger,
+    protocolHandler: KtorGraphQLWebSocketProtocolHandler,
+    mapper: ObjectMapper
+) {
+    webSocket(subscriptionsPath, protocol = "graphql-transport-ws") {
+        val session = this
+        val sessionId = UUID.randomUUID()
+        incoming.consumeEach { frame ->
+            launch(Dispatchers.IO) {
+                logger.trace(String(frame.data))
+                protocolHandler.handle(frame, session, sessionId, coroutineContext.job)
+                    .map { mapper.writeValueAsString(it) }
+                    .map { Frame.Text(it) }
+                    .onEach { frame ->
+                        logger.trace(String(frame.data))
+                        send(frame)
+                    }
+                    .cancellable()
+                    .collect()
+            }
+        }
+    }
+}
+
+private fun Route.graphQLRoute(
+    path: String,
+    graphQLServer: GraphQLServer<ApplicationRequest>
+) {
+    route(path, HttpMethod.Post) {
+        val contentNegotiationPlugin = this.application.pluginOrNull(ContentNegotiation)
+        if (contentNegotiationPlugin == null) {
+            install(ContentNegotiation) {
+                jackson()
+            }
+        }
+
+        handle {
+            val result = graphQLServer.execute(call.request)
+
+            result?.also { call.respond(it) } ?: run {
+                call.respond(HttpStatusCode.BadRequest)
             }
         }
     }
@@ -135,6 +165,8 @@ class KtorGraphQLPluginConfiguration {
     var hooks: SchemaGeneratorHooks = NoopSchemaGeneratorHooks
     var playground: Boolean = false
     var playgroundPath: String = "playground"
+    var authenticationName: String? = null
+    var authenticationEnabled: Boolean = false
 }
 
 private fun buildPlaygroundHtml(graphQLPath: String, subscriptionsPath: String) =

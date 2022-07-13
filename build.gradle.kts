@@ -33,6 +33,7 @@ kotlin {
 
                 implementation("io.ktor:ktor-serialization-jackson:$ktor_version")
                 implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
+                implementation("io.ktor:ktor-server-auth:$ktor_version")
                 implementation("io.ktor:ktor-server:$ktor_version")
                 implementation("org.slf4j:slf4j-api:[1.7,)")
             }

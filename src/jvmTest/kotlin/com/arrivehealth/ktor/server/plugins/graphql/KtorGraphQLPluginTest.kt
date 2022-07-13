@@ -9,6 +9,7 @@ import com.expediagroup.graphql.server.types.GraphQLRequest
 import com.expediagroup.graphql.server.types.GraphQLResponse
 import com.expediagroup.graphql.server.types.GraphQLServerRequest
 import io.ktor.client.call.body
+import io.ktor.client.request.basicAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -18,6 +19,9 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.jackson.jackson
+import io.ktor.server.auth.Authentication
+import io.ktor.server.auth.UserIdPrincipal
+import io.ktor.server.auth.basic
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.testing.testApplication
 import org.assertj.core.api.Assertions.assertThat
@@ -150,5 +154,52 @@ class KtorGraphQLPluginTest {
                 }
             }
         }.isInstanceOf(TypeNotSupportedException::class.java)
+    }
+
+    @Test
+    fun `uses authentication if configured`() = testApplication {
+        install(Authentication) {
+            basic {
+                validate {
+                    if (it.name == "foo" && it.password == "bar") {
+                        UserIdPrincipal("foo")
+                    } else {
+                        null
+                    }
+                }
+            }
+        }
+
+        install(GraphQL) {
+            queries = listOf(SimpleQuery())
+            authenticationEnabled = true
+        }
+
+        val client = createClient {
+            install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
+                jackson()
+            }
+        }
+
+        val unauthorizedResponse: HttpResponse = client.post("/graphql") {
+            contentType(ContentType.Application.Json)
+            val request: GraphQLServerRequest = GraphQLRequest(
+                query = "{ value }"
+            )
+            setBody(request)
+        }
+
+        assertThat(unauthorizedResponse.status).isEqualTo(HttpStatusCode.Unauthorized)
+
+        val authorizedResponse: HttpResponse = client.post("/graphql") {
+            basicAuth("foo", "bar")
+            contentType(ContentType.Application.Json)
+            val request: GraphQLServerRequest = GraphQLRequest(
+                query = "{ value }"
+            )
+            setBody(request)
+        }
+
+        assertThat(authorizedResponse.status).isEqualTo(HttpStatusCode.OK)
     }
 }
