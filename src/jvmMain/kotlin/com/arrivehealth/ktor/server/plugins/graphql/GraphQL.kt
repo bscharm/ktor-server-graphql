@@ -29,6 +29,7 @@ import io.ktor.server.application.install
 import io.ktor.server.application.pluginOrNull
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.authentication
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.response.respond
@@ -68,8 +69,9 @@ val GraphQL = createApplicationPlugin(
     val hooks = pluginConfig.hooks
     val playground = pluginConfig.playground
     val playgroundPath = pluginConfig.playgroundPath
-    val authenticationEnabled = pluginConfig.authenticationEnabled
+    val authenticationEnabled = pluginConfig.authentication
     val authenticationName = pluginConfig.authenticationName
+    val contextFactory = pluginConfig.contextFactory
 
     val mapper = jacksonObjectMapper()
     val config = SchemaGeneratorConfig(
@@ -80,7 +82,7 @@ val GraphQL = createApplicationPlugin(
     val graphQL: GraphQL = graphql.GraphQL.newGraphQL(schema).valueUnboxer(IDValueUnboxer())
         .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy()).build()
     val graphQLServer: GraphQLServer<ApplicationRequest> = KtorGraphQLServer(
-        KtorGraphQLRequestParser(mapper), KtorGraphQLContextFactory(emptyMap()), GraphQLRequestHandler(graphQL)
+        KtorGraphQLRequestParser(mapper), KtorGraphQLContextFactory(contextFactory), GraphQLRequestHandler(graphQL)
     )
     val subscriptionHandler = KtorGraphQLSubscriptionHandler(graphQL)
     val protocolHandler = KtorGraphQLWebSocketProtocolHandler(subscriptionHandler)
@@ -156,17 +158,18 @@ private fun Route.graphQLRoute(
 }
 
 class KtorGraphQLPluginConfiguration {
-    var packages: List<String> = emptyList()
     var queries: List<Query> = emptyList()
     var mutations: List<Mutation> = emptyList()
     var subscriptions: List<Subscription> = emptyList()
-    var subscriptionsPath: String = "subscriptions"
-    var path: String = "graphql"
+    var packages: List<String> = emptyList()
     var hooks: SchemaGeneratorHooks = NoopSchemaGeneratorHooks
+    var contextFactory: ContextFactoryFunction = NoopContextFactoryFunction
     var playground: Boolean = false
-    var playgroundPath: String = "playground"
+    var authentication: Boolean = false
     var authenticationName: String? = null
-    var authenticationEnabled: Boolean = false
+    var path: String = "graphql"
+    var subscriptionsPath: String = "subscriptions"
+    var playgroundPath: String = "playground"
 }
 
 private fun buildPlaygroundHtml(graphQLPath: String, subscriptionsPath: String) =

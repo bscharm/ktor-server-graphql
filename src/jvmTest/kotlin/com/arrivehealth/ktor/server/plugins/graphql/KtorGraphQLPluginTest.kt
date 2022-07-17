@@ -172,7 +172,9 @@ class KtorGraphQLPluginTest {
 
         install(GraphQL) {
             queries = listOf(SimpleQuery())
-            authenticationEnabled = true
+            authentication = true
+            contextFactory =
+                { request -> request.headers.get("X-CUSTOM-HEADER")?.let { mapOf("customHeader" to it) } ?: emptyMap() }
         }
 
         val client = createClient {
