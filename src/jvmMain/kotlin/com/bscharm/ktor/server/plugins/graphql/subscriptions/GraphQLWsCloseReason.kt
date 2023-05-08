@@ -1,4 +1,4 @@
-package com.arrivehealth.ktor.server.plugins.graphql.subscriptions
+package com.bscharm.ktor.server.plugins.graphql.subscriptions
 
 enum class GraphQLWsCloseReason(val Code: Short) {
     UnrecognizedMessage(4400),

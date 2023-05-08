@@ -12,7 +12,7 @@ necessary libraries as dependencies.
 Add the following dependency to your `build.gradle.kts`:
 
 ```kotlin
-implementation("com.arrivehealth:ktor-server-graphql:1.0.0")
+implementation("com.bscharm:ktor-server-graphql:1.0.0")
 ```
 
 ## Usage
@@ -36,8 +36,7 @@ As the underlying framework, [graphql-java](https://www.graphql-java.com/), reli
 on [jackson](https://github.com/FasterXML/jackson) for serialization, so too
 does this plugin. If you do not have the [ContentNegotiation](https://ktor.io/docs/serialization.html) plugin installed
 it will be installed for you but _scoped to the route for GraphQL_. If you install on your own, be sure to use jackson
-as
-the serializer.
+as the serializer.
 
 ## Configuration
 
@@ -99,6 +98,7 @@ embeddedServer(Netty, port = 8080) {
         packages = listOf("my.schema.package")
         authentication = true
         authenticationName = "custom-auth-name" // this can be omitted if omitted above
+        contextFactory = factoryFunction
     }
 }.start(wait = true)
 ```

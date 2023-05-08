@@ -1,4 +1,4 @@
-val ktor_version: String by project
+val ktorVersion: String by project
 
 plugins {
     kotlin("multiplatform") version "1.7.0"
@@ -6,7 +6,7 @@ plugins {
     id("net.researchgate.release") version "3.0.0"
 }
 
-group = "com.arrivehealth"
+group = "com.bscharm"
 
 repositories {
     mavenCentral()
@@ -26,15 +26,13 @@ kotlin {
     sourceSets {
         val jvmMain by getting {
             dependencies {
-                api("io.ktor:ktor-server-websockets:$ktor_version")
-                api("com.expediagroup:graphql-kotlin-server:[6.0.0-alpha.0,)") {
-                    exclude("org.jetbrains.kotlinx", "kotlinx-coroutines-reactive")
-                }
+                api("io.ktor:ktor-server-websockets:$ktorVersion")
+                api("com.expediagroup:graphql-kotlin-server:6.4.1")
 
-                implementation("io.ktor:ktor-serialization-jackson:$ktor_version")
-                implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
-                implementation("io.ktor:ktor-server-auth:$ktor_version")
-                implementation("io.ktor:ktor-server:$ktor_version")
+                implementation("io.ktor:ktor-serialization-jackson:$ktorVersion")
+                implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+                implementation("io.ktor:ktor-server-auth:$ktorVersion")
+                implementation("io.ktor:ktor-server:$ktorVersion")
                 implementation("org.slf4j:slf4j-api:[1.7,)")
             }
         }
@@ -42,9 +40,10 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))
-                implementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
-                implementation("io.ktor:ktor-client-websockets:$ktor_version")
-                implementation("io.ktor:ktor-server-test-host:$ktor_version")
+                compileOnly("io.ktor:ktor-server:$ktorVersion")
+                implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+                implementation("io.ktor:ktor-client-websockets:$ktorVersion")
+                implementation("io.ktor:ktor-server-test-host:$ktorVersion")
                 implementation("org.junit.jupiter:junit-jupiter-params:[5.6,)")
                 implementation("org.assertj:assertj-core:3.23.1")
                 implementation("org.jetbrains.kotlin:kotlin-test:1.7.0")
@@ -58,7 +57,7 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/rxrevu/ktor-server-graphql")
+            url = uri("https://maven.pkg.github.com/bscharm/ktor-server-graphql")
             credentials {
                 username = System.getenv("GITHUB_ACTOR")
                 password = System.getenv("GITHUB_TOKEN")

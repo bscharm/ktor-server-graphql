@@ -1,6 +1,6 @@
-package com.arrivehealth.ktor.server.plugins.graphql.testQueries
+package com.bscharm.ktor.server.plugins.graphql.testQueries
 
-import com.arrivehealth.ktor.server.plugins.graphql.testSchema.ComplexType
+import com.bscharm.ktor.server.plugins.graphql.testSchema.ComplexType
 import com.expediagroup.graphql.server.operations.Query
 
 class ComplexQuery : Query {

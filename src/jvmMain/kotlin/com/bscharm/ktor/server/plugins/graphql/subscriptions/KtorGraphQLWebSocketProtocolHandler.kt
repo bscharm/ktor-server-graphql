@@ -1,4 +1,4 @@
-package com.arrivehealth.ktor.server.plugins.graphql.subscriptions
+package com.bscharm.ktor.server.plugins.graphql.subscriptions
 
 import com.expediagroup.graphql.server.extensions.toGraphQLError
 import com.expediagroup.graphql.server.types.GraphQLRequest
@@ -41,7 +41,7 @@ class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorG
             is GraphQLWebSocketMessage.SubscriptionMessage -> onSubscribe(message, session, sessionId, job)
             is GraphQLWebSocketMessage.CompleteMessage -> onComplete(message, sessionId)
             else -> {
-                logger.debug("closing session[$sessionId]: received unrecognized message")
+                logger.debug("closing session[{}]: received unrecognized message", sessionId)
                 session.close(CloseReason(GraphQLWsCloseReason.UnrecognizedMessage.Code, "Unrecognized message"))
                 emptyFlow()
             }
@@ -69,7 +69,7 @@ class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorG
         logger.debug("received init")
 
         if (state.isInitialized(sessionId)) {
-            logger.debug("closing session[$sessionId]: received duplicate init")
+            logger.debug("closing session[{}]: received duplicate init", sessionId)
             session.close(
                 CloseReason(
                     GraphQLWsCloseReason.DuplicateInitialization.Code,
@@ -95,13 +95,13 @@ class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorG
         logger.debug("received subscribe")
 
         if (!state.isInitialized(sessionId)) {
-            logger.debug("closing session[$sessionId]: received subscribe before init")
+            logger.debug("closing session[{}]: received subscribe before init", sessionId)
             session.close(CloseReason(GraphQLWsCloseReason.Unauthorized.Code, "Unauthorized."))
             return emptyFlow()
         }
 
         if (state.operationSubscribed(message.id, sessionId)) {
-            logger.debug("closing session[$sessionId]: received duplicate subscribe for operation[${message.id}]")
+            logger.debug("closing session[{}]: received duplicate subscribe for operation[{}]", sessionId, message.id)
             session.close(
                 CloseReason(
                     GraphQLWsCloseReason.SubscriberExists.Code,
@@ -111,7 +111,7 @@ class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorG
         }
 
         state.markOperationSubscribed(message.id, sessionId, job)
-        logger.debug("session[$sessionId] subscribed to operation[${message.id}]")
+        logger.debug("session[{}] subscribed to operation[{}]", sessionId, message.id)
         val graphQLRequest = mapper.convertValue<GraphQLRequest>(message.payload)
 
         return subscriptionHandler.execute(graphQLRequest)
@@ -127,7 +127,10 @@ class KtorGraphQLWebSocketProtocolHandler(private val subscriptionHandler: KtorG
                 val error = throwable.toGraphQLError()
                 emit(GraphQLWebSocketMessage.ErrorMessage(id = message.id, payload = listOf(error)))
             }
-            .onCompletion { emit(GraphQLWebSocketMessage.CompleteMessage(id = message.id)) }
+            .onCompletion {
+                emit(GraphQLWebSocketMessage.CompleteMessage(id = message.id))
+                state.cancelOperation(message.id, sessionId)
+            }
     }
 
     private fun onPing(): Flow<GraphQLWebSocketMessage.PongMessage> {

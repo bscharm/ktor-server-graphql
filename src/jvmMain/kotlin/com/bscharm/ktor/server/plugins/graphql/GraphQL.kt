@@ -1,7 +1,7 @@
-package com.arrivehealth.ktor.server.plugins.graphql
+package com.bscharm.ktor.server.plugins.graphql
 
-import com.arrivehealth.ktor.server.plugins.graphql.subscriptions.KtorGraphQLSubscriptionHandler
-import com.arrivehealth.ktor.server.plugins.graphql.subscriptions.KtorGraphQLWebSocketProtocolHandler
+import com.bscharm.ktor.server.plugins.graphql.subscriptions.KtorGraphQLSubscriptionHandler
+import com.bscharm.ktor.server.plugins.graphql.subscriptions.KtorGraphQLWebSocketProtocolHandler
 import com.expediagroup.graphql.generator.SchemaGeneratorConfig
 import com.expediagroup.graphql.generator.TopLevelObject
 import com.expediagroup.graphql.generator.execution.FlowSubscriptionExecutionStrategy
@@ -43,12 +43,12 @@ import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.Frame
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -56,7 +56,8 @@ import java.util.UUID
 
 @Suppress("Unused")
 val GraphQL = createApplicationPlugin(
-    name = "GraphQL", createConfiguration = ::KtorGraphQLPluginConfiguration
+    name = "GraphQL",
+    createConfiguration = ::KtorGraphQLPluginConfiguration
 ) {
     val logger: Logger = LoggerFactory.getLogger("KtorGraphQLPlugin")
 
@@ -76,13 +77,15 @@ val GraphQL = createApplicationPlugin(
     val mapper = jacksonObjectMapper()
     val config = SchemaGeneratorConfig(
         supportedPackages = packages,
-        hooks = hooks,
+        hooks = hooks
     )
     val schema: GraphQLSchema = toSchema(config, queries, mutations, subscriptions)
     val graphQL: GraphQL = graphql.GraphQL.newGraphQL(schema).valueUnboxer(IDValueUnboxer())
         .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy()).build()
     val graphQLServer: GraphQLServer<ApplicationRequest> = KtorGraphQLServer(
-        KtorGraphQLRequestParser(mapper), KtorGraphQLContextFactory(contextFactory), GraphQLRequestHandler(graphQL)
+        KtorGraphQLRequestParser(mapper),
+        KtorGraphQLContextFactory(contextFactory),
+        GraphQLRequestHandler(graphQL)
     )
     val subscriptionHandler = KtorGraphQLSubscriptionHandler(graphQL)
     val protocolHandler = KtorGraphQLWebSocketProtocolHandler(subscriptionHandler)
@@ -119,20 +122,40 @@ private fun Route.webSocketRoute(
         val session = this
         val sessionId = UUID.randomUUID()
         incoming.consumeEach { frame ->
+            logger.trace(String(frame.data))
             launch(Dispatchers.IO) {
-                logger.trace(String(frame.data))
-                protocolHandler.handle(frame, session, sessionId, coroutineContext.job)
-                    .map { mapper.writeValueAsString(it) }
-                    .map { Frame.Text(it) }
-                    .onEach { frame ->
-                        logger.trace(String(frame.data))
-                        send(frame)
-                    }
-                    .cancellable()
-                    .collect()
+                coroutineContext[Job]?.also { job ->
+                    protocolHandler.handle(frame, session, sessionId, job)
+                        .map { mapper.writeValueAsString(it) }
+                        .map { Frame.Text(it) }
+                        .onEach { frame ->
+                            logger.trace(String(frame.data))
+                            send(frame)
+                        }
+                        .cancellable()
+                        .collect()
+                } ?: run {
+                    logger.error("no job found when processing session[$sessionId] on $coroutineContext")
+                    logger.error("frame: ${String(frame.data)}")
+                }
             }
         }
     }
+}
+
+class KtorGraphQLPluginConfiguration {
+    var queries: List<Query> = emptyList()
+    var mutations: List<Mutation> = emptyList()
+    var subscriptions: List<Subscription> = emptyList()
+    var packages: List<String> = emptyList()
+    var hooks: SchemaGeneratorHooks = NoopSchemaGeneratorHooks
+    var contextFactory: ContextFactoryFunction = NoopContextFactoryFunction
+    var playground: Boolean = false
+    var authentication: Boolean = false
+    var authenticationName: String? = null
+    var path: String = "graphql"
+    var subscriptionsPath: String = "subscriptions"
+    var playgroundPath: String = "playground"
 }
 
 private fun Route.graphQLRoute(
@@ -155,21 +178,6 @@ private fun Route.graphQLRoute(
             }
         }
     }
-}
-
-class KtorGraphQLPluginConfiguration {
-    var queries: List<Query> = emptyList()
-    var mutations: List<Mutation> = emptyList()
-    var subscriptions: List<Subscription> = emptyList()
-    var packages: List<String> = emptyList()
-    var hooks: SchemaGeneratorHooks = NoopSchemaGeneratorHooks
-    var contextFactory: ContextFactoryFunction = NoopContextFactoryFunction
-    var playground: Boolean = false
-    var authentication: Boolean = false
-    var authenticationName: String? = null
-    var path: String = "graphql"
-    var subscriptionsPath: String = "subscriptions"
-    var playgroundPath: String = "playground"
 }
 
 private fun buildPlaygroundHtml(graphQLPath: String, subscriptionsPath: String) =

@@ -1,4 +1,4 @@
-package com.arrivehealth.ktor.server.plugins.graphql.subscriptions
+package com.bscharm.ktor.server.plugins.graphql.subscriptions
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue

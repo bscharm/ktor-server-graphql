@@ -1,4 +1,4 @@
-package com.arrivehealth.ktor.server.plugins.graphql.subscriptions
+package com.bscharm.ktor.server.plugins.graphql.subscriptions
 
 import com.expediagroup.graphql.server.extensions.toExecutionInput
 import com.expediagroup.graphql.server.types.GraphQLRequest
@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
 class KtorGraphQLSubscriptionHandler(private val graphQL: GraphQL) {
-    @Suppress("UNCHECKED_CAST", "KotlinConstantConditions")
     fun execute(graphQLRequest: GraphQLRequest): Flow<ExecutionResult> {
         val input = graphQLRequest.toExecutionInput()
 

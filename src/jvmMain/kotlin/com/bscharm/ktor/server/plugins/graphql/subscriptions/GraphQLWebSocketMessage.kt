@@ -1,4 +1,4 @@
-package com.arrivehealth.ktor.server.plugins.graphql.subscriptions
+package com.bscharm.ktor.server.plugins.graphql.subscriptions
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonTypeInfo

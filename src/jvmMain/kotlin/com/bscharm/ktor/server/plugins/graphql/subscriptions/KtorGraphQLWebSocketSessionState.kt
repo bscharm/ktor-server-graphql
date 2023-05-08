@@ -1,4 +1,4 @@
-package com.arrivehealth.ktor.server.plugins.graphql.subscriptions
+package com.bscharm.ktor.server.plugins.graphql.subscriptions
 
 import io.ktor.util.collections.ConcurrentSet
 import kotlinx.coroutines.Job

@@ -1,7 +1,7 @@
-package com.arrivehealth.ktor.server.plugins.graphql
+package com.bscharm.ktor.server.plugins.graphql
 
-import com.arrivehealth.ktor.server.plugins.graphql.subscriptions.GraphQLWebSocketMessage
-import com.arrivehealth.ktor.server.plugins.graphql.testQueries.SimpleQuery
+import com.bscharm.ktor.server.plugins.graphql.subscriptions.GraphQLWebSocketMessage
+import com.bscharm.ktor.server.plugins.graphql.testQueries.SimpleQuery
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.websocket.WebSockets
