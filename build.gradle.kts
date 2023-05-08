@@ -3,7 +3,7 @@ val ktorVersion: String by project
 plugins {
     kotlin("multiplatform") version "1.7.0"
     id("maven-publish")
-    id("net.researchgate.release") version "3.0.0"
+    id("net.researchgate.release") version "3.0.2"
 }
 
 group = "com.bscharm"
@@ -68,7 +68,7 @@ publishing {
 
 release {
     git {
-        requireBranch.set("/release.+/")
+       requireBranch.set(null as String?)
     }
     svn {
         username.set(System.getenv("GITHUB_ACTOR"))
