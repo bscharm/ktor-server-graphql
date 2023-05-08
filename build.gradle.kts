@@ -1,3 +1,5 @@
+import net.researchgate.release.ReleaseExtension
+
 val ktorVersion: String by project
 
 plugins {
@@ -66,8 +68,10 @@ publishing {
     }
 }
 
-release {
-    git {
+
+configure<ReleaseExtension> {
+    ignoredSnapshotDependencies.set(listOf("net.researchgate:gradle-release"))
+    with(git) {
         requireBranch.set("main")
     }
     svn {
