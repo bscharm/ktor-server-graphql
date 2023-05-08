@@ -12,7 +12,7 @@ necessary libraries as dependencies.
 Add the following dependency to your `build.gradle.kts`:
 
 ```kotlin
-implementation("com.bscharm:ktor-server-graphql:1.0.0")
+implementation("com.bscharm:ktor-server-graphql:2.0.0")
 ```
 
 ## Usage
