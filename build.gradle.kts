@@ -68,7 +68,7 @@ publishing {
 
 release {
     git {
-        requireBranch.set("")
+        requireBranch.set("/release.+/")
     }
     svn {
         username.set(System.getenv("GITHUB_ACTOR"))
