@@ -1,3 +1,5 @@
+val ktorVersion: String by project
+
 plugins {
     kotlin("multiplatform") version "1.7.0"
     id("maven-publish")
@@ -5,7 +7,6 @@ plugins {
 }
 
 group = "com.bscharm"
-version = "1.0.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -25,21 +26,58 @@ kotlin {
     sourceSets {
         val jvmMain by getting {
             dependencies {
-                implementation("io.ktor:ktor-server:[2.0.0,)")
-                implementation("io.ktor:ktor-server-content-negotiation-jvm:[2.0.0,)")
-                implementation("io.ktor:ktor-serialization-jackson-jvm:[2.0.0,)")
-                api("com.expediagroup:graphql-kotlin-server:[6.0.0-alpha.0,)")
+                api("io.ktor:ktor-server-websockets:$ktorVersion")
+                api("com.expediagroup:graphql-kotlin-server:6.4.1")
+
+                implementation("io.ktor:ktor-serialization-jackson:$ktorVersion")
+                implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+                implementation("io.ktor:ktor-server-auth:$ktorVersion")
+                implementation("io.ktor:ktor-server:$ktorVersion")
+                implementation("org.slf4j:slf4j-api:[1.7,)")
             }
         }
+
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))
-                compileOnly("io.ktor:ktor-server:[2.0.0,)")
-                implementation("io.ktor:ktor-client-content-negotiation:[2.0.0,)")
+                compileOnly("io.ktor:ktor-server:$ktorVersion")
+                implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+                implementation("io.ktor:ktor-client-websockets:$ktorVersion")
+                implementation("io.ktor:ktor-server-test-host:$ktorVersion")
+                implementation("org.junit.jupiter:junit-jupiter-params:[5.6,)")
                 implementation("org.assertj:assertj-core:3.23.1")
-                implementation("io.ktor:ktor-server-test-host:[2.0.0,)")
                 implementation("org.jetbrains.kotlin:kotlin-test:1.7.0")
+                implementation("org.junit.jupiter:junit-jupiter-params:[5.6,)")
             }
         }
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/bscharm/ktor-server-graphql")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
+
+release {
+    git {
+        requireBranch.set("main")
+    }
+    svn {
+        username.set(System.getenv("GITHUB_ACTOR"))
+        password.set(System.getenv("GITHUB_TOKEN"))
+    }
+}
+
+tasks {
+    afterReleaseBuild {
+        dependsOn(":publish")
     }
 }
